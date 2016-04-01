@@ -18,7 +18,7 @@
 // Load AWS SDK for PHP
 
 require 'aws/aws-autoloader.php';
-use Aws\S3\S3Client;
+use \Aws\S3\S3Client;
 
 
 class AmazonS3Cloudfront extends WireData implements Module, ConfigurableModule {
@@ -27,7 +27,7 @@ class AmazonS3Cloudfront extends WireData implements Module, ConfigurableModule 
 
 		return array(
 			'title' => 'Amazon S3 / CloudFront Delivery and Backup', 
-			'version' => 60, 
+			'version' => 65, 
 			'summary' => 'Synchronize all the page assets uploaded through PW to a specified bucket in Amazon S3 and serve them through Amazon CloudFront.',
 			'href' => 'https://github.com/nmendes/amazons3cloudfront',
 			'singular' => true, 
@@ -50,6 +50,7 @@ class AmazonS3Cloudfront extends WireData implements Module, ConfigurableModule 
 			));
 
 		$this->addHook('InputfieldFile::fileAdded', $this, 'addFile');						// Fired when a file is added to a page in the admin
+		$this->addHookAfter('Pageimage::size', $this, 'addFile');						// Fired when a image is resized via API
 		if(wire('modules')->isInstalled("FieldtypeCropImage"))
 			$this->addHookAfter('ProcessCropImage::executeSave', $this, 'addThumb');				// Fired when thumbnail is modified
 		$this->addHookAfter('Pagefiles::delete', $this, 'deleteFile');						// Fired when a file is deleted from a page
@@ -91,7 +92,11 @@ class AmazonS3Cloudfront extends WireData implements Module, ConfigurableModule 
 
 	public function addFile($event){
 
-		$file = $event->arguments(0); 
+		if(count($event->return)) { //if it's a image resize event
+			$file = $event->return; //get image variation data
+		} else {
+			$file = $event->arguments(0); 	
+		}
 		$filename = $file->name;
 		$filename_original = $file->url;
 		$pathToFile = $file->filename();
